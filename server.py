@@ -20,6 +20,7 @@ PORT = 8000
 chatroom_names = ["first", "second"]
 chatroom_dict = {} # name, chatroom object
 client_dict = {} #joinid, client object
+error_dict = {1: 'Invalid chatroom name'}
 
 
 
@@ -32,18 +33,13 @@ def analysePacket(clientSocket, address):
 		packetArray = data.split("\\n")
 		if checkChatroomName(packetArray): # the packet contains an existing chat room
 			print ("Valid chatroom!")
-			handleClient(packetArray, address)
+			response = joinClient(packetArray, address)
+			clientSocket.sendall(response.encode())
 			clientSocket.close()
 			displayCurrentStats()
 		else:
-			print "error non existing chat"
+			sendErrMsg(1, clientSocket)
 			clientSocket.close()
-
-		# ipaddress = address[0]
-		# portnum = address[1]
-		# response = "HELO text\nIP:[%s]\nPort:[%d]\nStudentID:[%s]\n" % (ipaddress, portnum, STUDENT_ID)
-		# clientSocket.sendall(response.encode())
-		# clientSocket.close()
 
 	elif whichPacket == RESPONSE_PACKET_TWO:
 		clientSocket.close()
@@ -55,7 +51,16 @@ def checkChatroomName(packet):
 			return True
 	return False
 
-def handleClient(packet, address):
+def sendErrMsg(code, socket):
+	msg = error_dict[code]
+	response = "ERROR_CODE: %d\nERROR_DESCRIPTION: %s" % (code, msg)
+	socket.sendall(response.encode())
+
+def getJoinedResponse(chatroom_name, ipaddress, port, roomref, join_id):
+	msg = "JOINED_CHATROOM: %s\nSERVER_IP: %s\nPORT: %d\nROOM_REF: %d\nJOIN_ID: %d" % (chatroom_name, ipaddress, port, roomref, join_id)
+	return msg
+
+def joinClient(packet, address):
 	firstline = packet[0]
 	lastLine = packet[3]
 	chatroomName = firstline[len(JOIN_CHATROOM):(len(firstline))]
@@ -68,6 +73,9 @@ def handleClient(packet, address):
 	client_dict[join_id] = New_Client
 	chatroom.addClient(New_Client)
 	print ("Successfully added client!")
+	ipaddress = chatroom.getIPAddress()
+	port = chatroom.getPort()
+	return getJoinedResponse(chatroomName, ipaddress, port, room_ref, join_id)
 
 def displayCurrentStats():
 	print "=== CURRENT CHATROOMS ==="

@@ -22,5 +22,11 @@ class Chatroom:
 	def getRoomRef(self):
 		return self.room_ref
 
+	def getIPAddress(self):
+		return self.ipaddress
+
+	def getPort(self):
+		return self.port
+
 	def addClient(self, client):
 		self.list_of_clients.append(client)
