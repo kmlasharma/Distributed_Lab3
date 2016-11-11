@@ -14,6 +14,7 @@ MAX_CLIENTS = 1000
 UTF = "utf-8"
 JOIN_CHATROOM = "JOIN_CHATROOM: "
 LEAVE_CHATROOM = "LEAVE_CHATROOM: "
+DISCONNECT_CHATROOM = "DISCONNECT: "
 CLIENT_NAME = "CLIENT_NAME: "
 JOIN_ID = "JOIN_ID: "
 RESPONSE_PACKET_TWO = 2
@@ -25,8 +26,9 @@ chatroom_names = ["first", "second"]
 chatroom_dict = {} # roomref, chatroom object
 client_dict = {} #joinid, client object
 error_dict = {1: 'Invalid chatroom ref', 2: 'Client is not part of this chat', 3: 'Client does not exist on chat server'}
-chatroomName_ToRoomRef = {}
-
+chatroomName_ToRoomRef = {} #chatroomname, roomref
+clientWhoLeftChat_dict = {} #roomref, client
+activeSockets = []
 
 
 def analysePacket(clientSocket, address):
@@ -53,9 +55,13 @@ def analysePacket(clientSocket, address):
 			clientSocket.close()
 			print ("Thread finished!\nClosed connection!")
 		else:
-			print response
 			clientSocket.sendall(response.encode())
 			displayCurrentStats()
+		clientSocket.close()
+		activeSockets.remove((clientSocket,address))
+	else:
+		print "WUT"
+
 
 def leaveClient(packetArray, address, socket):
 	roomrefToLeave = int(isolateTextFromInput(packetArray[0], LEAVE_CHATROOM))
@@ -67,9 +73,14 @@ def leaveClient(packetArray, address, socket):
 		chatroom = chatroom_dict[roomrefToLeave]
 		client_joinID = int(isolateTextFromInput(packetArray[1], JOIN_ID))
 		if not client_dict.has_key(client_joinID):
-			print ("Client doesnt exist...")
-			sendErrMsg(3, socket)
-			return ""
+			if clientWhoLeftChat_dict.has_key(roomrefToLeave):
+				print "Client has already left chat server."
+				response = "LEFT_CHATROOM: %d\nJOIN_ID: %d" % (roomrefToLeave, client_joinID)
+				return response
+			else:
+				print ("Client doesnt exist on chat server...")
+				sendErrMsg(3, socket)
+				return ""
 		client = client_dict[client_joinID]
 		if not chatroom.checkIfClientInChatroom(client):
 			print ("The client: %s is not a member of the chatroom: %s. Sending error msg...") % (client.getClientName(), chatroom.getChatroomName())
@@ -80,8 +91,22 @@ def leaveClient(packetArray, address, socket):
 			chatroom.removeClient(client)
 			del client_dict[client_joinID]
 			response = "LEFT_CHATROOM: %d\nJOIN_ID: %d" % (roomrefToLeave, client_joinID)
+			clientWhoLeftChat_dict[roomrefToLeave] = client
+			broadcastMsgToChatroom("Client %s has left the chatroom!" % client.getClientName(), chatroom)
 			return response
 
+def broadcastMsgToChatroom(msg, chatroom):
+	clients = chatroom.getListOfClients()
+	for client in clients:
+		ipaddress = client.getClientIPAddress()
+		port = client.getClientPort()
+		addr = (ipaddress, port)
+		for sock in activeSockets:
+			if sock[1] == addr:
+				socket = sock[0]
+				socket.sendall(msg.encode())
+				print ("sent msg %s") % msg
+		
 
 def isolateTextFromInput(line, stripText):
 	return line[len(stripText):len(line)]
@@ -107,6 +132,8 @@ def handleInput(data):
 		return JOIN_CHATROOM
 	elif (LEAVE_CHATROOM in data):
 		return LEAVE_CHATROOM
+	elif (DISCONNECT_CHATROOM in data):
+		return DISCONNECT
 
 # chatroom name mentioned in the first line of all join packets
 def checkJoinChatroomName(packet):
@@ -178,19 +205,35 @@ def main():
 	setUpChatrooms()
 	serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	serversocket.bind((HOST, PORT))
-	serversocket.listen(5)
-
+	serversocket.listen(10)
+	
+	print "Here......."
 	while 1:
 		print ("Waiting for client connections...")
 		#accept connections from outside
-		(clientsocket, address) = serversocket.accept()
-		waiting_conns.append((clientsocket, address))
-		print ("Current amount of queued connections: %d" % (len(waiting_conns)))
 
 		for t in allThreadsWorking:
 				if (not t.isAlive()):
 					allThreadsWorking.remove(t)
 					print ("Removed an unworking thread from the pool.")
+
+		for connTuple in activeSockets:
+			print("POLLING")
+			sock = connTuple[0]
+			address = connTuple[1]
+			data = (sock.recv(BUFFER)).decode(UTF)
+			if (data):
+				print("got one")
+				thread = threading.Thread(target=analysePacket, args = (sock, address))
+				allThreadsWorking.append(thread)
+				thread.start()
+				print ("Current working threads: " + str(len(allThreadsWorking)))
+
+		(clientsocket, address) = serversocket.accept()
+		activeSockets.append((clientsocket,address))
+		waiting_conns.append((clientsocket,address))
+		print ("Current amount of queued connections: %d" % (len(waiting_conns)))
+
 
 		if (len(allThreadsWorking) <= max_threads): #can create a new thread
 			connTuple = waiting_conns.pop()

@@ -18,4 +18,10 @@ class Client:
 
 	def getClientName(self):
 		return self.name
+
+	def getClientPort(self):
+		return self.port
+
+	def getClientIPAddress(self):
+		return self.ipaddress
 		
