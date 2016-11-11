@@ -15,4 +15,7 @@ class Client:
 
 	def displayClientDetails(self):
 		print "Name: %s, Join ID: %d, Room Ref: %d, Port: %d, IP: %s" % (self.name, self.join_id, self.room_ref, self.port, self.ipaddress)
+
+	def getClientName(self):
+		return self.name
 		

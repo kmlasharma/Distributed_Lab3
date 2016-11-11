@@ -22,6 +22,9 @@ class Chatroom:
 	def getRoomRef(self):
 		return self.room_ref
 
+	def getChatroomName(self):
+		return self.name
+
 	def getIPAddress(self):
 		return self.ipaddress
 
@@ -30,3 +33,9 @@ class Chatroom:
 
 	def addClient(self, client):
 		self.list_of_clients.append(client)
+
+	def removeClient(self, client):
+		self.list_of_clients.remove(client)
+
+	def checkIfClientInChatroom(self, client):
+		return client in self.list_of_clients

@@ -9,18 +9,23 @@ import client as Client
 max_threads = 10
 HOST = "localhost"
 BUFFER = 1024
+MAX_CHATROOMS = 100
+MAX_CLIENTS = 1000
 UTF = "utf-8"
 JOIN_CHATROOM = "JOIN_CHATROOM: "
+LEAVE_CHATROOM = "LEAVE_CHATROOM: "
 CLIENT_NAME = "CLIENT_NAME: "
+JOIN_ID = "JOIN_ID: "
 RESPONSE_PACKET_TWO = 2
 STUDENT_ID = "13319349"
 allThreadsWorking = []
 waiting_conns = []
 PORT = 8000
 chatroom_names = ["first", "second"]
-chatroom_dict = {} # name, chatroom object
+chatroom_dict = {} # roomref, chatroom object
 client_dict = {} #joinid, client object
-error_dict = {1: 'Invalid chatroom name'}
+error_dict = {1: 'Invalid chatroom ref', 2: 'Client is not part of this chat', 3: 'Client does not exist on chat server'}
+chatroomName_ToRoomRef = {}
 
 
 
@@ -28,25 +33,91 @@ def analysePacket(clientSocket, address):
 	data = (clientSocket.recv(BUFFER)).decode(UTF)
 	data = str(data)
 	whichPacket = handleInput(data)
+	packetArray = data.split("\\n")
 	if whichPacket == JOIN_CHATROOM:
 		print ("Client requesting to join...")
-		packetArray = data.split("\\n")
-		if checkChatroomName(packetArray): # the packet contains an existing chat room
-			print ("Valid chatroom!")
-			response = joinClient(packetArray, address)
-			clientSocket.sendall(response.encode())
-			clientSocket.close()
-			displayCurrentStats()
+		if checkJoinChatroomName(packetArray): # the packet contains an existing chat room
+			print ("Client joining an existing chatroom...")
 		else:
-			sendErrMsg(1, clientSocket)
+			if (len(chatroom_names) < MAX_CHATROOMS):
+				print ("Creating a new chatroom...")
+				createChatroom(packetArray)
+		response = joinClient(packetArray, address)
+		clientSocket.sendall(response.encode())
+		displayCurrentStats()
+
+	elif whichPacket == LEAVE_CHATROOM:
+		print ("Client requesting to leave...")
+		response = leaveClient(packetArray, address, clientSocket)
+		if (response == ""):
 			clientSocket.close()
+			print ("Thread finished!\nClosed connection!")
+		else:
+			print response
+			clientSocket.sendall(response.encode())
+			displayCurrentStats()
 
-	elif whichPacket == RESPONSE_PACKET_TWO:
-		clientSocket.close()
-	print ("Thread finished!\nClosed connection!")
+def leaveClient(packetArray, address, socket):
+	roomrefToLeave = int(isolateTextFromInput(packetArray[0], LEAVE_CHATROOM))
+	if not chatroom_dict.has_key(roomrefToLeave):
+		print ("Invalid chat ref. Sending error msg...")
+		sendErrMsg(1, socket)
+		return ""
+	else: #check if client is a member of this chatroom
+		chatroom = chatroom_dict[roomrefToLeave]
+		client_joinID = int(isolateTextFromInput(packetArray[1], JOIN_ID))
+		if not client_dict.has_key(client_joinID):
+			print ("Client doesnt exist...")
+			sendErrMsg(3, socket)
+			return ""
+		client = client_dict[client_joinID]
+		if not chatroom.checkIfClientInChatroom(client):
+			print ("The client: %s is not a member of the chatroom: %s. Sending error msg...") % (client.getClientName(), chatroom.getChatroomName())
+			sendErrMsg(2, socket)
+			return ""
+		else:
+			print ("Deleting Client from Chat Server...")
+			chatroom.removeClient(client)
+			del client_dict[client_joinID]
+			response = "LEFT_CHATROOM: %d\nJOIN_ID: %d" % (roomrefToLeave, client_joinID)
+			return response
 
-def checkChatroomName(packet):
+
+def isolateTextFromInput(line, stripText):
+	return line[len(stripText):len(line)]
+
+def getValidID(lowerbound, upperbound, dictToCheck):
+	refID = randint(lowerbound, upperbound)
+	while(dictToCheck.has_key(refID)):
+		refID = randint(lowerbound, upperbound)
+	return refID
+
+def createChatroom(packet):
+	firstline = packet[0]
+	chatroomName = isolateTextFromInput(packet[0], JOIN_CHATROOM)
+	chatroom_names.append(chatroomName)
+	roomref = getValidID(1, MAX_CHATROOMS, chatroom_dict)
+	x = Chatroom.Chatroom(chatroomName, "localhost", 8000, roomref, [])
+	chatroom_dict[roomref] = x
+	chatroomName_ToRoomRef[chatroomName] = roomref
+
+
+def handleInput(data):
+	if (JOIN_CHATROOM in data):
+		return JOIN_CHATROOM
+	elif (LEAVE_CHATROOM in data):
+		return LEAVE_CHATROOM
+
+# chatroom name mentioned in the first line of all join packets
+def checkJoinChatroomName(packet):
 	for name in chatroom_names:
+		if (name in packet[0]):
+			return True
+	return False
+
+# chatroom ref mentioned in the first line of all packets
+def checkChatroomRef(packet): 
+	for room in chatroom_dict:
 		if (name in packet[0]):
 			return True
 	return False
@@ -61,15 +132,12 @@ def getJoinedResponse(chatroom_name, ipaddress, port, roomref, join_id):
 	return msg
 
 def joinClient(packet, address):
-	firstline = packet[0]
-	lastLine = packet[3]
-	chatroomName = firstline[len(JOIN_CHATROOM):(len(firstline))]
-	chatroom = chatroom_dict[chatroomName]
-	room_ref = chatroom.getRoomRef()
-	join_id = randint(1, 100)
-	while(client_dict.has_key(join_id)):
-		join_id = randint(1, 100)
-	New_Client = Client.Client(join_id, lastLine[len(CLIENT_NAME):len(lastLine)], room_ref, address[1], address[0])
+	chatroomName = isolateTextFromInput(packet[0], JOIN_CHATROOM)
+	room_ref = chatroomName_ToRoomRef[chatroomName]
+	chatroom = chatroom_dict[room_ref]
+	join_id = getValidID(1, MAX_CLIENTS, client_dict)
+	clientname = isolateTextFromInput(packet[3], CLIENT_NAME)
+	New_Client = Client.Client(join_id, clientname, room_ref, address[1], address[0])
 	client_dict[join_id] = New_Client
 	chatroom.addClient(New_Client)
 	print ("Successfully added client!")
@@ -80,14 +148,15 @@ def joinClient(packet, address):
 def displayCurrentStats():
 	print "=== CURRENT CHATROOMS ==="
 	for x in chatroom_names:
-		chatroom_dict[x].displayChatroomDetails()
+		roomref = chatroomName_ToRoomRef[x]
+		chatroom_dict[roomref].displayChatroomDetails()
 
 	print "=== CHATROOM CLIENTS ==="
 	for x in chatroom_names:
-		clients = chatroom_dict[x].getListOfClients()
+		roomref = chatroomName_ToRoomRef[x]
+		clients = chatroom_dict[roomref].getListOfClients()
 		for y in clients:
-			if (y is not None):
-				y.displayClientDetails()
+			y.displayClientDetails()
 
 
 	print "=== CURRENT CLIENTS CONNECTED ON THE SERVER ==="
@@ -95,16 +164,13 @@ def displayCurrentStats():
 		client_dict[x].displayClientDetails()
 	print "====================="
 
-def handleInput(data):
-	if ("JOIN_CHATROOM" in data):
-		return JOIN_CHATROOM
-
 
 def setUpChatrooms():
 	roomref = 1
 	for name in chatroom_names:
 		x = Chatroom.Chatroom(name, "localhost", 8000, roomref, [])
-		chatroom_dict[name] = x
+		chatroom_dict[roomref] = x
+		chatroomName_ToRoomRef[name] = roomref
 		roomref += 1
 
 def main():
