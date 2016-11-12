@@ -16,7 +16,10 @@ JOIN_CHATROOM = "JOIN_CHATROOM: "
 LEAVE_CHATROOM = "LEAVE_CHATROOM: "
 DISCONNECT_CHATROOM = "DISCONNECT: "
 CLIENT_NAME = "CLIENT_NAME: "
+PORT_NAME  = "PORT: "
 JOIN_ID = "JOIN_ID: "
+CHAT = "CHAT: "
+MESSAGE = "MESSAGE: "
 RESPONSE_PACKET_TWO = 2
 STUDENT_ID = "13319349"
 allThreadsWorking = []
@@ -25,9 +28,12 @@ PORT = 8000
 chatroom_names = ["first", "second"]
 chatroom_dict = {} # roomref, chatroom object
 client_dict = {} #joinid, client object
-error_dict = {1: 'Invalid chatroom ref', 2: 'Client is not part of this chat', 3: 'Client does not exist on chat server'}
+error_dict = {1: 'Invalid chatroom ref', 2: 'Client is not part of this chat', 3: 'Client does not exist on chat server', 
+4: 'Invalid Join ID', 5: 'Invalid Join ID, client name combination'}
 chatroomName_ToRoomRef = {} #chatroomname, roomref
+clientName_ToJoinID = {}
 clientWhoLeftChat_dict = {} #roomref, client
+clientNamesActive = []
 activeSockets = []
 
 
@@ -52,15 +58,66 @@ def analysePacket(clientSocket, address):
 		print ("Client requesting to leave...")
 		response = leaveClient(packetArray, address, clientSocket)
 		if (response == ""):
-			clientSocket.close()
 			print ("Thread finished!\nClosed connection!")
-		else:
-			clientSocket.sendall(response.encode())
-			displayCurrentStats()
-		clientSocket.close()
-		activeSockets.remove((clientSocket,address))
+		displayCurrentStats()
+
+	elif whichPacket == DISCONNECT_CHATROOM:
+		print ("Client requesting to disconnect")
+		disconnectClient(packetArray, clientSocket)
+		displayCurrentStats()
+
+	elif whichPacket == CHAT:
+		print ("Client request to send a msg to a chatroom")
+		sendMsg(packetArray, clientSocket)
 	else:
 		print "WUT"
+
+def disconnectClient(packetArray, socket):
+	clientname = isolateTextFromInput(packetArray[2], CLIENT_NAME)
+	if not clientname in clientNamesActive:
+		print "This client %s is not on the chat server.." % clientname
+		sendErrMsg(3, socket)
+	else:
+		port = int(isolateTextFromInput(packetArray[1], PORT_NAME))
+		ip = isolateTextFromInput(packetArray[0], DISCONNECT_CHATROOM)
+		addr = (ip,port)
+		for sock in activeSockets:
+			if (sock[1] == addr):
+				sock[0].close()
+				activeSockets.remove((sock[0],addr))
+				clientNamesActive.remove(clientname)
+				joinid = clientName_ToJoinID[clientname]
+				client = client_dict[joinid]
+				roomref = client.getClientRoomRef()
+				chatroom = chatroom_dict[roomref]
+				chatroom.removeClient(client)
+				del client_dict[joinid]
+				print "Successfully disconnected client."
+
+def sendMsg(packetArray, socket):
+	joinid = int(isolateTextFromInput(packetArray[1], JOIN_ID))
+	if (client_dict.has_key(joinid)):
+		clientname = isolateTextFromInput(packetArray[2], CLIENT_NAME)
+		if (clientName_ToJoinID[clientname] == joinid):
+			client = client_dict[joinid]
+			roomref = int(isolateTextFromInput(packetArray[0], CHAT))
+			if (roomref == client.getClientRoomRef()):
+				chatroom = chatroom_dict[roomref]
+				msg = isolateTextFromInput(packetArray[3], MESSAGE)
+				response = "CHAT: %d\nCLIENT_NAME: %s\nMESSAGE: %s" % (roomref, clientname, msg)
+				broadcastMsgToChatroom(response, chatroom)
+			else:
+				print "Client %s is not a member of this chat: %d" % (clientname, roomref)
+				print "from packet %d vs from server %d" % (roomref, client.getClientRoomRef())
+				sendErrMsg(2, socket)
+		else:
+			print "Invalid Join ID, client name combination: %d , %s" % (joinid, clientname)
+			sendErrMsg(5, socket)
+	else:
+		print "Invalid Join ID %d" % joinid
+		sendErrMsg(4, socket)
+
+
 
 
 def leaveClient(packetArray, address, socket):
@@ -89,11 +146,20 @@ def leaveClient(packetArray, address, socket):
 		else:
 			print ("Deleting Client from Chat Server...")
 			chatroom.removeClient(client)
-			del client_dict[client_joinID]
-			response = "LEFT_CHATROOM: %d\nJOIN_ID: %d" % (roomrefToLeave, client_joinID)
-			clientWhoLeftChat_dict[roomrefToLeave] = client
-			broadcastMsgToChatroom("Client %s has left the chatroom!" % client.getClientName(), chatroom)
-			return response
+			client = client_dict[client_joinID]
+			ip = client.getClientIPAddress()
+			port = client.getClientPort()
+			addr = (ip,port)
+			for sock in activeSockets:
+				if addr == sock[1]:
+					"Found client requesting to leave socket"
+					del client_dict[client_joinID]
+					clientNamesActive.remove(client.getClientName())
+					response = "LEFT_CHATROOM: %d\nJOIN_ID: %d" % (roomrefToLeave, client_joinID)
+					clientWhoLeftChat_dict[roomrefToLeave] = client
+					del clientName_ToJoinID[client.getClientName()]
+					broadcastMsgToChatroom("Client %s has left the chatroom!" % client.getClientName(), chatroom)
+					sock[0].sendall(response.encode())
 
 def broadcastMsgToChatroom(msg, chatroom):
 	clients = chatroom.getListOfClients()
@@ -106,7 +172,6 @@ def broadcastMsgToChatroom(msg, chatroom):
 				socket = sock[0]
 				socket.sendall(msg.encode())
 				print ("sent msg %s") % msg
-		
 
 def isolateTextFromInput(line, stripText):
 	return line[len(stripText):len(line)]
@@ -122,7 +187,7 @@ def createChatroom(packet):
 	chatroomName = isolateTextFromInput(packet[0], JOIN_CHATROOM)
 	chatroom_names.append(chatroomName)
 	roomref = getValidID(1, MAX_CHATROOMS, chatroom_dict)
-	x = Chatroom.Chatroom(chatroomName, "localhost", 8000, roomref, [])
+	x = Chatroom.Chatroom(chatroomName, "localhost", PORT, roomref, [])
 	chatroom_dict[roomref] = x
 	chatroomName_ToRoomRef[chatroomName] = roomref
 
@@ -133,7 +198,9 @@ def handleInput(data):
 	elif (LEAVE_CHATROOM in data):
 		return LEAVE_CHATROOM
 	elif (DISCONNECT_CHATROOM in data):
-		return DISCONNECT
+		return DISCONNECT_CHATROOM
+	elif (CHAT in data):
+		return CHAT
 
 # chatroom name mentioned in the first line of all join packets
 def checkJoinChatroomName(packet):
@@ -170,6 +237,8 @@ def joinClient(packet, address):
 	print ("Successfully added client!")
 	ipaddress = chatroom.getIPAddress()
 	port = chatroom.getPort()
+	clientNamesActive.append(clientname)
+	clientName_ToJoinID[clientname] = join_id
 	return getJoinedResponse(chatroomName, ipaddress, port, room_ref, join_id)
 
 def displayCurrentStats():
@@ -195,7 +264,7 @@ def displayCurrentStats():
 def setUpChatrooms():
 	roomref = 1
 	for name in chatroom_names:
-		x = Chatroom.Chatroom(name, "localhost", 8000, roomref, [])
+		x = Chatroom.Chatroom(name, "localhost", PORT, roomref, [])
 		chatroom_dict[roomref] = x
 		chatroomName_ToRoomRef[name] = roomref
 		roomref += 1
@@ -218,7 +287,7 @@ def main():
 					print ("Removed an unworking thread from the pool.")
 
 		for connTuple in activeSockets:
-			print("POLLING")
+			print("POLLING ACTIVE SOCKETS")
 			sock = connTuple[0]
 			address = connTuple[1]
 			data = (sock.recv(BUFFER)).decode(UTF)

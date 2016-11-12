@@ -24,4 +24,7 @@ class Client:
 
 	def getClientIPAddress(self):
 		return self.ipaddress
+
+	def getClientRoomRef(self):
+		return self.room_ref
 		
