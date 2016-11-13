@@ -12,6 +12,8 @@ BUFFER = 1024
 MAX_CHATROOMS = 100
 MAX_CLIENTS = 1000
 UTF = "utf-8"
+HELO_TEXT = "HELO"
+KILL_SERVICE = "KILL_SERVICE"
 JOIN_CHATROOM = "JOIN_CHATROOM: "
 LEAVE_CHATROOM = "LEAVE_CHATROOM: "
 DISCONNECT_CHATROOM = "DISCONNECT: "
@@ -69,8 +71,16 @@ def analysePacket(clientSocket, address):
 	elif whichPacket == CHAT:
 		print ("Client request to send a msg to a chatroom")
 		sendMsg(packetArray, clientSocket)
-	else:
-		print "WUT"
+
+	elif whichPacket == HELO_TEXT:
+		ipaddress = address[0]
+		portnum = address[1]
+		response = "HELO text\nIP:[%s]\nPort:[%d]\nStudentID:[%s]\n" % (ipaddress, portnum, STUDENT_ID)
+		clientSocket.sendall(response.encode())
+		clientSocket.close()
+
+	elif whichPacket == DISCONNECT_CHATROOM:
+		clientSocket.close()
 
 def disconnectClient(packetArray, socket):
 	clientname = isolateTextFromInput(packetArray[2], CLIENT_NAME)
@@ -201,6 +211,10 @@ def handleInput(data):
 		return DISCONNECT_CHATROOM
 	elif (CHAT in data):
 		return CHAT
+	elif (HELO_TEXT in data):
+		return HELO_TEXT
+	elif (KILL_SERVICE in data):
+		return KILL_SERVICE
 
 # chatroom name mentioned in the first line of all join packets
 def checkJoinChatroomName(packet):
