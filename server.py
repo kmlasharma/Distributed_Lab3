@@ -110,7 +110,7 @@ def sendMsg(packetArray, socket):
 			if (roomref == client.getClientRoomRef()):
 				chatroom = chatroom_dict[roomref]
 				msg = isolateTextFromInput(packetArray[3], MESSAGE)
-				response = "CHAT: %d\nCLIENT_NAME: %s\nMESSAGE: %s" % (roomref, clientname, msg)
+				response = "CHAT: %d\nCLIENT_NAME: %s\nMESSAGE: %s\n\n" % (roomref, clientname, msg)
 				broadcastMsgToChatroom(response, chatroom)
 			else:
 				print "Client %s is not a member of this chat: %d" % (clientname, roomref)
