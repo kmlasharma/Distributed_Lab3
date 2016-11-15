@@ -7,7 +7,7 @@ import chatrooms as Chatroom
 import client as Client
 
 max_threads = 10
-HOST = "localhost"
+HOST = "10.62.0.145"
 BUFFER = 1024
 MAX_CHATROOMS = 100
 MAX_CLIENTS = 1000
@@ -73,7 +73,7 @@ def analysePacket(clientSocket, address):
 		sendMsg(packetArray, clientSocket)
 
 	elif whichPacket == HELO_TEXT:
-		response = "HELO text\nIP:[%s]\nPort:[%d]\nStudentID:[%s]\n" % ("localhost", PORT, STUDENT_ID)
+		response = "HELO text\nIP:[%s]\nPort:[%d]\nStudentID:[%s]\n" % (HOST, PORT, STUDENT_ID)
 		clientSocket.sendall(response.encode())
 		clientSocket.close()
 
@@ -188,7 +188,7 @@ def createChatroom(packet):
 	chatroomName = isolateTextFromInput(packet[0], JOIN_CHATROOM)
 	chatroom_names.append(chatroomName)
 	roomref = getValidID(1, MAX_CHATROOMS, chatroom_dict)
-	x = Chatroom.Chatroom(chatroomName, "localhost", PORT, roomref, [])
+	x = Chatroom.Chatroom(chatroomName, HOST, PORT, roomref, [])
 	chatroom_dict[roomref] = x
 	chatroomName_ToRoomRef[chatroomName] = roomref
 
@@ -269,7 +269,7 @@ def displayCurrentStats():
 def setUpChatrooms():
 	roomref = 1
 	for name in chatroom_names:
-		x = Chatroom.Chatroom(name, "localhost", PORT, roomref, [])
+		x = Chatroom.Chatroom(name, HOST, PORT, roomref, [])
 		chatroom_dict[roomref] = x
 		chatroomName_ToRoomRef[name] = roomref
 		roomref += 1
