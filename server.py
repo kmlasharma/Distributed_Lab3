@@ -25,7 +25,7 @@ RESPONSE_PACKET_TWO = 2
 STUDENT_ID = "13319349"
 allThreadsWorking = []
 waiting_conns = []
-PORT = 8080
+PORT = 8000
 chatroom_names = ["first", "second"]
 chatroom_dict = {} # roomref, chatroom object
 client_dict = {} #joinid, client object
@@ -35,9 +35,10 @@ chatroomName_ToRoomRef = {} #chatroomname, roomref
 clientName_ToJoinID = {}
 clientWhoLeftChat_dict = {} #roomref, client
 clientNamesActive = []
+isSocketAlive = True
 
 def analysePacket(clientSocket, address):
-	while True:
+	while isSocketAlive:
 		data = (clientSocket.recv(BUFFER)).decode(UTF)
 		if (data):
 			data = str(data)
@@ -66,6 +67,7 @@ def analysePacket(clientSocket, address):
 			elif whichPacket == DISCONNECT_CHATROOM:
 				print ("Client requesting to disconnect")
 				disconnectClient(packetArray)
+				return
 				displayCurrentStats()
 
 			elif whichPacket == CHAT:
@@ -93,6 +95,8 @@ def disconnectClient(packetArray):
 		chatroom.removeClient(client)
 		del client_dict[joinid]
 		print "Successfully disconnected client."
+		isSocketAlive = False
+
 				
 def sendMsg(packetArray, socket):
 	joinid = int(isolateTextFromInput(packetArray[1], JOIN_ID))
