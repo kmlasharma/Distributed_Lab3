@@ -5,8 +5,10 @@ import threading
 from random import randint
 import chatrooms as Chatroom
 import client as Client
+import sys
+
 max_threads = 10
-HOST = "localhost"
+HOST = "10.62.0.145"
 BUFFER = 1024
 MAX_CHATROOMS = 100
 MAX_CLIENTS = 1000
@@ -42,10 +44,10 @@ def analysePacket(clientSocket, address):
 		data = (clientSocket.recv(BUFFER)).decode(UTF)
 		if (data):
 			data = str(data)
-			print "D DATA %s" % data
+			print "DATA: %s" % data
 			whichPacket = handleInput(data)
-			packetArray = data.split("\\n")
-			print ("PACKET ARRAY %s") % packetArray
+			packetArray = data.split("\n")
+			print ("PACKET ARRAY: %s") % packetArray
 			if whichPacket == JOIN_CHATROOM:
 				print ("Client requesting to join...")
 				if checkJoinChatroomName(packetArray): # the packet contains an existing chat room
@@ -77,6 +79,11 @@ def analysePacket(clientSocket, address):
 			elif whichPacket == HELO_TEXT:
 				response = "HELO BASE_TEXT\nIP:%s\nPort:%d\nStudentID:%s" % (HOST, PORT, STUDENT_ID)
 				clientSocket.sendall(response.encode())
+			elif whichPacket == KILL_SERVICE:
+				print "Client requesting to kill service"
+				clientSocket.close()
+				sys.exit()
+				return
 			else:
 				print "UNKNOWN!!!!!!!!"
 
