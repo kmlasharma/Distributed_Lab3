@@ -6,7 +6,7 @@ from random import randint
 import chatrooms as Chatroom
 import client as Client
 max_threads = 10
-HOST = "localhost"
+HOST = "10.62.0.145"
 BUFFER = 1024
 MAX_CHATROOMS = 100
 MAX_CLIENTS = 1000
@@ -313,6 +313,7 @@ def main():
 				clsocket = connTuple[0]
 				address = connTuple[1]
 				thread = threading.Thread(target=analysePacket, args = (clsocket, address))
+				thread.setDaemon(True)
 				allThreadsWorking.append(thread)
 				thread.start()
 				print ("Current working threads: " + str(len(allThreadsWorking)))
