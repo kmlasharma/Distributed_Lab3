@@ -6,7 +6,7 @@ from random import randint
 import chatrooms as Chatroom
 import client as Client
 max_threads = 10
-HOST = "10.62.0.145"
+HOST = "localhost"
 BUFFER = 1024
 MAX_CHATROOMS = 100
 MAX_CLIENTS = 1000
@@ -45,6 +45,7 @@ def analysePacket(clientSocket, address):
 			print "D DATA %s" % data
 			whichPacket = handleInput(data)
 			packetArray = data.split("\\n")
+			print ("PACKET ARRAY %s") % packetArray
 			if whichPacket == JOIN_CHATROOM:
 				print ("Client requesting to join...")
 				if checkJoinChatroomName(packetArray): # the packet contains an existing chat room
@@ -174,7 +175,8 @@ def broadcastMsgToChatroom(msg, chatroom):
 		print ("sent msg %s") % msg
 
 def isolateTextFromInput(line, stripText):
-	return line[len(stripText):len(line)].rstrip()
+	line = line.rstrip()
+	return line[len(stripText):(len(line))]
 
 def getValidID(lowerbound, upperbound, dictToCheck):
 	refID = randint(lowerbound, upperbound)
