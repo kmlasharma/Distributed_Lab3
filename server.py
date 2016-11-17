@@ -13,14 +13,14 @@ MAX_CLIENTS = 1000
 UTF = "utf-8"
 HELO_TEXT = "HELO"
 KILL_SERVICE = "KILL_SERVICE"
-JOIN_CHATROOM = "JOIN_CHATROOM: "
-LEAVE_CHATROOM = "LEAVE_CHATROOM: "
-DISCONNECT_CHATROOM = "DISCONNECT: "
-CLIENT_NAME = "CLIENT_NAME: "
-PORT_NAME  = "PORT: "
-JOIN_ID = "JOIN_ID: "
-CHAT = "CHAT: "
-MESSAGE = "MESSAGE: "
+JOIN_CHATROOM = "JOIN_CHATROOM:"
+LEAVE_CHATROOM = "LEAVE_CHATROOM:"
+DISCONNECT_CHATROOM = "DISCONNECT:"
+CLIENT_NAME = "CLIENT_NAME:"
+PORT_NAME  = "PORT:"
+JOIN_ID = "JOIN_ID:"
+CHAT = "CHAT:"
+MESSAGE = "MESSAGE:"
 RESPONSE_PACKET_TWO = 2
 STUDENT_ID = "13319349"
 allThreadsWorking = []
@@ -68,15 +68,16 @@ def analysePacket(clientSocket, address):
 				print ("Client requesting to disconnect")
 				disconnectClient(packetArray)
 				return
-				displayCurrentStats()
 
 			elif whichPacket == CHAT:
 				print ("Client request to send a msg to a chatroom")
 				sendMsg(packetArray, clientSocket)
 
 			elif whichPacket == HELO_TEXT:
-				response = "HELO text\nIP:[%s]\nPort:[%d]\nStudentID:[%s]" % (HOST, PORT, STUDENT_ID)
+				response = "HELO BASE_TEXT\nIP:%s\nPort:%d\nStudentID:%s" % (HOST, PORT, STUDENT_ID)
 				clientSocket.sendall(response.encode())
+			else:
+				print "UNKNOWN!!!!!!!!"
 
 
 def disconnectClient(packetArray):
@@ -138,7 +139,7 @@ def leaveClient(packetArray, socket):
 		if not client_dict.has_key(client_joinID):
 			if clientWhoLeftChat_dict.has_key(roomrefToLeave):
 				print "Client has already left chat server."
-				response = "LEFT_CHATROOM: %d\nJOIN_ID: %d" % (roomrefToLeave, client_joinID)
+				response = "LEFT_CHATROOM: %d\nJOIN_ID: %d\n\n" % (roomrefToLeave, client_joinID)
 				client = clientWhoLeftChat_dict[roomrefToLeave]
 				socket = client.getClientSocket()
 				socket.sendall(response.encode())
@@ -159,24 +160,11 @@ def leaveClient(packetArray, socket):
 			clientSocket = client.getClientSocket()
 			del client_dict[client_joinID]
 			clientNamesActive.remove(client.getClientName())
-			response = "LEFT_CHATROOM: %d\nJOIN_ID: %d" % (roomrefToLeave, client_joinID)
+			response = "LEFT_CHATROOM: %d\nJOIN_ID: %d\n\n" % (roomrefToLeave, client_joinID)
 			clientWhoLeftChat_dict[roomrefToLeave] = client
 			del clientName_ToJoinID[client.getClientName()]
-			broadcastMsgToChatroom("Client %s has left the chatroom!" % client.getClientName(), chatroom)
+			broadcastMsgToChatroom("Client %s has left the chatroom!\n\n" % client.getClientName(), chatroom)
 			clientSocket.sendall(response.encode())
-
-
-
-			# for sock in activeSockets:
-			# 	if sock == clientSocket:
-			# 		"Found! client requesting to close socket"
-			# 		del client_dict[client_joinID]
-			# 		clientNamesActive.remove(client.getClientName())
-			# 		response = "LEFT_CHATROOM: %d\nJOIN_ID: %d" % (roomrefToLeave, client_joinID)
-			# 		clientWhoLeftChat_dict[roomrefToLeave] = client
-			# 		del clientName_ToJoinID[client.getClientName()]
-			# 		broadcastMsgToChatroom("Client %s has left the chatroom!" % client.getClientName(), chatroom)
-			# 		sock[0].sendall(response.encode())
 
 def broadcastMsgToChatroom(msg, chatroom):
 	clients = chatroom.getListOfClients()
@@ -234,11 +222,11 @@ def checkChatroomRef(packet):
 
 def sendErrMsg(code, socket):
 	msg = error_dict[code]
-	response = "ERROR_CODE: %d\nERROR_DESCRIPTION: %s" % (code, msg)
+	response = "ERROR_CODE: %d\nERROR_DESCRIPTION: %s\n\n" % (code, msg)
 	socket.sendall(response.encode())
 
 def getJoinedResponse(chatroom_name, ipaddress, port, roomref, join_id):
-	msg = "JOINED_CHATROOM: %s\nSERVER_IP: %s\nPORT: %d\nROOM_REF: %d\nJOIN_ID: %d" % (chatroom_name, ipaddress, port, roomref, join_id)
+	msg = "JOINED_CHATROOM: %s\nSERVER_IP: %s\nPORT: %d\nROOM_REF: %d\nJOIN_ID: %d\n\n" % (chatroom_name, ipaddress, port, roomref, join_id)
 	return msg
 
 def joinClient(packet, socket):
