@@ -8,7 +8,7 @@ import client as Client
 import sys
 
 max_threads = 10
-HOST = "localhost"
+HOST = "10.62.0.145"
 BUFFER = 1024
 MAX_CHATROOMS = 100
 MAX_CLIENTS = 1000
@@ -27,7 +27,7 @@ RESPONSE_PACKET_TWO = 2
 STUDENT_ID = "13319349"
 allThreadsWorking = []
 waiting_conns = []
-PORT = 8040
+PORT = 8020
 chatroom_names = ["first", "second"]
 chatroom_dict = {} # roomref, chatroom object
 client_dict = {} #joinid, client object
@@ -45,7 +45,7 @@ def analysePacket(clientSocket, address):
 			data = str(data)
 			print "DATA: %s" % data
 			whichPacket = handleInput(data)
-			packetArray = data.split("\\n")
+			packetArray = data.split("\n")
 			print ("PACKET ARRAY: %s") % packetArray
 			if whichPacket == JOIN_CHATROOM:
 				print ("Client requesting to join...")
@@ -172,6 +172,9 @@ def leaveClient(packetArray, socket):
 			print ("The client: %s is not a member of the chatroom: %s. Sending error msg...") % (client.getClientName(), chatroom.getChatroomName())
 			# sendErrMsg(2, socket)
 			response = "LEFT_CHATROOM: %d\nJOIN_ID: %d\n" % (roomrefToLeave, client_joinID)
+			socket.sendall(response.encode())
+			msg = "CHAT: %d\nCLIENT_NAME: %s\nMESSAGE: %s has left this chatroom.\n\n" % (roomrefToLeave, client.getClientName(), client.getClientName())
+                        broadcastMsgToChatroom(msg, chatroom)
 			return ""
 		else:
 			print ("Deleting Client from Chat Server...")
@@ -267,7 +270,7 @@ def joinClient(packet, socket):
 	clientNamesActive.append(clientname)
 	clientName_ToJoinID[clientname] = join_id
 	msg = getJoinedResponse(chatroomName, ipaddress, port, room_ref, join_id)
-	broadcastMsgToChatroom(msg, chatroom)
+	socket.sendall(msg.encode())
 	chatMsg = "CHAT: %d\nCLIENT_NAME: %s\nMESSAGE: %s has joined this chatroom.\n\n" % (room_ref, clientname, clientname)
 	broadcastMsgToChatroom(chatMsg, chatroom)
 
