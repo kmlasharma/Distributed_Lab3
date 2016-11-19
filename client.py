@@ -24,3 +24,5 @@ class Client:
 	def getClientRoomRef(self):
 		return self.room_ref
 		
+	def getJoinId(self):
+		return self.join_id

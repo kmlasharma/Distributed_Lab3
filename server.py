@@ -27,7 +27,7 @@ RESPONSE_PACKET_TWO = 2
 STUDENT_ID = "13319349"
 allThreadsWorking = []
 waiting_conns = []
-PORT = 8000
+PORT = 8040
 chatroom_names = ["first", "second"]
 chatroom_dict = {} # roomref, chatroom object
 client_dict = {} #joinid, client object
@@ -156,23 +156,39 @@ def leaveClient(packetArray, socket):
 				print ("Client doesnt exist on chat server...")
 				sendErrMsg(3, socket)
 				return ""
+		print "WE getting %d" % client_joinID
+		print chatroom.getChatroomName() 
 		client = client_dict[client_joinID]
-		if not chatroom.checkIfClientInChatroom(client):
+		found = False
+		list = chatroom.getListOfClients()
+		for cl in list:
+			id = cl.getJoinId()
+			print id
+			print client_joinID
+			if (id == client_joinID):
+				print "Client is found in this chatroom"
+				found = True
+				break
+		if not found:
+			print "Check if client %s in chatroom" % client.getClientName()
+			print chatroom.checkIfClientInChatroom(client)
+			chatroom.displayChatroomDetails()
+			print chatroom.getListOfClients()
 			print ("The client: %s is not a member of the chatroom: %s. Sending error msg...") % (client.getClientName(), chatroom.getChatroomName())
 			sendErrMsg(2, socket)
 			return ""
 		else:
 			print ("Deleting Client from Chat Server...")
-			chatroom.removeClient(client)
-			client = client_dict[client_joinID]
-			clientSocket = client.getClientSocket()
-			del client_dict[client_joinID]
-			clientNamesActive.remove(client.getClientName())
-			response = "LEFT_CHATROOM: %d\nJOIN_ID: %d\n\n" % (roomrefToLeave, client_joinID)
+			response = "LEFT_CHATROOM: %d\nJOIN_ID: %d\n" % (roomrefToLeave, client_joinID)
 			clientWhoLeftChat_dict[roomrefToLeave] = client
 			del clientName_ToJoinID[client.getClientName()]
-			broadcastMsgToChatroom("Client %s has left the chatroom!\n\n" % client.getClientName(), chatroom)
-			clientSocket.sendall(response.encode())
+			print "Broadcasting leave msg to chatroom"
+			msg = "CHAT: %d\nCLIENT_NAME: %s\nMESSAGE: %s has left this chatroom.\n\n" % (roomrefToLeave, client.getClientName(), client.getClientName())
+			socket.sendall(response.encode())
+			broadcastMsgToChatroom(msg, chatroom)
+			chatroom.removeClient(client)
+                        del client_dict[client_joinID]
+                        clientNamesActive.remove(client.getClientName())
 
 def broadcastMsgToChatroom(msg, chatroom):
 	clients = chatroom.getListOfClients()
@@ -235,7 +251,7 @@ def sendErrMsg(code, socket):
 	socket.sendall(response.encode())
 
 def getJoinedResponse(chatroom_name, ipaddress, port, roomref, join_id):
-	msg = "JOINED_CHATROOM: %s\nSERVER_IP: %s\nPORT: %d\nROOM_REF: %d\nJOIN_ID: %d\n\n" % (chatroom_name, ipaddress, port, roomref, join_id)
+	msg = "JOINED_CHATROOM:%s\nSERVER_IP:%s\nPORT:%d\nROOM_REF:%d\nJOIN_ID:%d\n" % (chatroom_name, ipaddress, port, roomref, join_id)
 	return msg
 
 def joinClient(packet, socket):
@@ -255,9 +271,9 @@ def joinClient(packet, socket):
 	clientNamesActive.append(clientname)
 	clientName_ToJoinID[clientname] = join_id
 	msg = getJoinedResponse(chatroomName, ipaddress, port, room_ref, join_id)
-	socket.sendall(msg.encode())
-	broadcastMsg = "CHAT: %d\nJOIN_ID: %d\nCLIENT_NAME: %s\nMESSAGE: %s has just joined the chatroom!\n\n" % (room_ref, join_id, clientname, clientname)
-	broadcastMsgToChatroom(broadcastMsg, chatroom)
+	broadcastMsgToChatroom(msg, chatroom)
+	chatMsg = "CHAT: %d\nCLIENT_NAME: %s\nMESSAGE: %s has joined this chatroom.\n\n" % (room_ref, clientname, clientname)
+	broadcastMsgToChatroom(chatMsg, chatroom)
 
 def displayCurrentStats():
 	print "=== CURRENT CHATROOMS ==="
