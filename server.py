@@ -56,8 +56,7 @@ def analysePacket(clientSocket, address):
 					if (len(chatroom_names) < MAX_CHATROOMS):
 						print ("Creating a new chatroom...")
 						createChatroom(packetArray)
-				response = joinClient(packetArray, clientSocket)
-				clientSocket.sendall(response.encode())
+				joinClient(packetArray, clientSocket)
 				displayCurrentStats()
 
 			elif whichPacket == LEAVE_CHATROOM:
@@ -79,6 +78,7 @@ def analysePacket(clientSocket, address):
 			elif whichPacket == HELO_TEXT:
 				response = "HELO BASE_TEXT\nIP:%s\nPort:%d\nStudentID:%s" % (HOST, PORT, STUDENT_ID)
 				clientSocket.sendall(response.encode())
+				
 			elif whichPacket == KILL_SERVICE:
 				print "Client requesting to kill service"
 				clientSocket.close()
@@ -254,7 +254,10 @@ def joinClient(packet, socket):
 	port = chatroom.getPort()
 	clientNamesActive.append(clientname)
 	clientName_ToJoinID[clientname] = join_id
-	return getJoinedResponse(chatroomName, ipaddress, port, room_ref, join_id)
+	msg = getJoinedResponse(chatroomName, ipaddress, port, room_ref, join_id)
+	socket.sendall(msg.encode())
+	broadcastMsg = "CHAT: %d\nJOIN_ID: %d\nCLIENT_NAME: %s\nMESSAGE: %s has just joined the chatroom!\n\n" % (room_ref, join_id, clientname, clientname)
+	broadcastMsgToChatroom(broadcastMsg, chatroom)
 
 def displayCurrentStats():
 	print "=== CURRENT CHATROOMS ==="
