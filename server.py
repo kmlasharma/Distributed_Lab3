@@ -15,14 +15,14 @@ MAX_CLIENTS = 1000
 UTF = "utf-8"
 HELO_TEXT = "HELO"
 KILL_SERVICE = "KILL_SERVICE"
-JOIN_CHATROOM = "JOIN_CHATROOM:"
-LEAVE_CHATROOM = "LEAVE_CHATROOM:"
-DISCONNECT_CHATROOM = "DISCONNECT:"
-CLIENT_NAME = "CLIENT_NAME:"
-PORT_NAME  = "PORT:"
-JOIN_ID = "JOIN_ID:"
-CHAT = "CHAT:"
-MESSAGE = "MESSAGE:"
+JOIN_CHATROOM = "JOIN_CHATROOM: "
+LEAVE_CHATROOM = "LEAVE_CHATROOM: "
+DISCONNECT_CHATROOM = "DISCONNECT: "
+CLIENT_NAME = "CLIENT_NAME: "
+PORT_NAME  = "PORT: "
+JOIN_ID = "JOIN_ID: "
+CHAT = "CHAT: "
+MESSAGE = "MESSAGE: "
 RESPONSE_PACKET_TWO = 2
 STUDENT_ID = "13319349"
 allThreadsWorking = []
@@ -271,7 +271,7 @@ def joinClient(packet, socket):
 	clientName_ToJoinID[clientname] = join_id
 	msg = getJoinedResponse(chatroomName, ipaddress, port, room_ref, join_id)
 	socket.sendall(msg.encode())
-	chatMsg = "CHAT: %d\nCLIENT_NAME: %s\nMESSAGE: %s has joined this chatroom.\n\n" % (room_ref, clientname, clientname)
+	chatMsg = "CHAT:%d\nCLIENT_NAME:%s\nMESSAGE: %s has joined this chatroom.\n\n" % (room_ref, clientname, clientname)
 	broadcastMsgToChatroom(chatMsg, chatroom)
 
 def displayCurrentStats():
