@@ -8,7 +8,7 @@ import client as Client
 import sys
 
 max_threads = 10
-HOST = "10.62.0.145"
+HOST = "localhost"
 BUFFER = 1024
 MAX_CHATROOMS = 100
 MAX_CLIENTS = 1000
@@ -38,7 +38,6 @@ clientName_ToJoinID = {}
 clientWhoLeftChat_dict = {} #roomref, client
 clientNamesActive = []
 isSocketAlive = True
-
 def analysePacket(clientSocket, address):
 	while isSocketAlive:
 		data = (clientSocket.recv(BUFFER)).decode(UTF)
@@ -46,7 +45,7 @@ def analysePacket(clientSocket, address):
 			data = str(data)
 			print "DATA: %s" % data
 			whichPacket = handleInput(data)
-			packetArray = data.split("\n")
+			packetArray = data.split("\\n")
 			print ("PACKET ARRAY: %s") % packetArray
 			if whichPacket == JOIN_CHATROOM:
 				print ("Client requesting to join...")
@@ -170,12 +169,9 @@ def leaveClient(packetArray, socket):
 				found = True
 				break
 		if not found:
-			print "Check if client %s in chatroom" % client.getClientName()
-			print chatroom.checkIfClientInChatroom(client)
-			chatroom.displayChatroomDetails()
-			print chatroom.getListOfClients()
 			print ("The client: %s is not a member of the chatroom: %s. Sending error msg...") % (client.getClientName(), chatroom.getChatroomName())
-			sendErrMsg(2, socket)
+			# sendErrMsg(2, socket)
+			response = "LEFT_CHATROOM: %d\nJOIN_ID: %d\n" % (roomrefToLeave, client_joinID)
 			return ""
 		else:
 			print ("Deleting Client from Chat Server...")
