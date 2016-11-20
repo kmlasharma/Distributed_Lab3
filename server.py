@@ -271,7 +271,7 @@ def joinClient(packet, socket):
 	clientName_ToJoinID[clientname] = join_id
 	msg = getJoinedResponse(chatroomName, ipaddress, port, room_ref, join_id)
 	socket.sendall(msg.encode())
-	chatMsg = "CHAT:%d\nCLIENT_NAME:%s\nMESSAGE: %s has joined this chatroom.\n\n" % (room_ref, clientname, clientname)
+	chatMsg = "CHAT: %d\nCLIENT_NAME: %s\nMESSAGE: %s has joined this chatroom.\n\n" % (room_ref, clientname, clientname)
 	broadcastMsgToChatroom(chatMsg, chatroom)
 
 def displayCurrentStats():
