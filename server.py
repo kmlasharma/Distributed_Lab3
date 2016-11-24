@@ -27,7 +27,7 @@ RESPONSE_PACKET_TWO = 2
 STUDENT_ID = "13319349"
 allThreadsWorking = []
 waiting_conns = []
-PORT = 8020
+PORT = 8010
 chatroom_names = ["first", "second"]
 chatroom_dict = {} # roomref, chatroom object
 client_dict = {} #joinid, client object
@@ -170,7 +170,7 @@ def leaveClient(packetArray, socket):
 				break
 		if not found:
 			print ("The client: %s is not a member of the chatroom: %s. Sending error msg...") % (client.getClientName(), chatroom.getChatroomName())
-			# sendErrMsg(2, socket)
+			#sendErrMsg(2, socket)
 			response = "LEFT_CHATROOM: %d\nJOIN_ID: %d\n" % (roomrefToLeave, client_joinID)
 			socket.sendall(response.encode())
 			msg = "CHAT: %d\nCLIENT_NAME: %s\nMESSAGE: %s has left this chatroom.\n\n" % (roomrefToLeave, client.getClientName(), client.getClientName())
@@ -192,9 +192,12 @@ def leaveClient(packetArray, socket):
 def broadcastMsgToChatroom(msg, chatroom):
 	clients = chatroom.getListOfClients()
 	for client in clients:
+		name = client.getClientName()
+		jid = client.getJoinId()
 		socket = client.getClientSocket()
 		socket.sendall(msg.encode())
-		print ("sent msg %s") % msg
+		print socket
+		print ("sent msg to %s, %d:\n%s") % (name, jid, msg)
 
 def isolateTextFromInput(line, stripText):
 	line = line.rstrip()
